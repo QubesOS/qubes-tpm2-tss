@@ -1,0 +1,124 @@
+Name:          tpm2-tss
+Version:       @VERSION@
+Release:       @REL@%{?dist}
+Summary:       TPM2.0 Software Stack
+
+# The entire source code is under BSD except implementation.h and tpmb.h which
+# is under TCGL(Trusted Computing Group License).
+License:       BSD and TCGL
+URL:           https://github.com/tpm2-software/tpm2-tss
+Source0:       https://github.com/tpm2-software/tpm2-tss/releases/download/%{version}/%{name}-%{version}.tar.gz
+# doxygen crash
+Patch0:        tpm2-tss-3.0.0-doxygen.patch
+
+%global udevrules_prefix 60-
+
+BuildRequires: make
+BuildRequires: autoconf-archive
+BuildRequires: doxygen
+BuildRequires: gcc
+BuildRequires: gcc-c++
+BuildRequires: json-c-devel
+BuildRequires: libcurl-devel
+BuildRequires: libgcrypt-devel
+BuildRequires: libtool
+BuildRequires: openssl-devel
+BuildRequires: pkgconfig
+BuildRequires: systemd
+Requires(pre): shadow-utils
+
+%description
+tpm2-tss is a software stack supporting Trusted Platform Module(TPM) 2.0 system
+APIs. It sits between TPM driver and applications, providing TPM2.0 specified
+APIs for applications to access TPM module through kernel TPM drivers.
+
+%prep
+%autosetup -n %{name}-%{version}
+
+%build
+# Use built-in tpm-udev.rules, with specified installation path and prefix.
+%configure --disable-static --disable-silent-rules \
+           --with-udevrulesdir=%{_udevrulesdir} --with-udevrulesprefix=%{udevrules_prefix} \
+           --with-runstatedir=%{_rundir} --with-tmpfilesdir=%{_tmpfilesdir} --with-sysusersdir=%{_sysusersdir}
+
+# This is to fix Rpath errors. Taken from https://fedoraproject.org/wiki/Packaging:Guidelines#Removing_Rpath
+sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
+sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
+
+%make_build
+
+%install
+%make_install
+find %{buildroot}%{_libdir} -type f -name \*.la -delete
+
+%pre
+getent group tss >/dev/null || groupadd -f -g 59 -r tss
+if ! getent passwd tss >/dev/null ; then
+    if ! getent passwd 59 >/dev/null ; then
+      useradd -r -u 59 -g tss -d /dev/null -s /sbin/nologin -c "Account used for TPM access" tss
+    else
+      useradd -r -g tss -d /dev/null -s /sbin/nologin -c "Account used for TPM access" tss
+    fi
+fi
+exit 0
+
+%ldconfig_scriptlets
+
+%files
+%doc README.md CHANGELOG.md
+%license LICENSE
+%{_sysconfdir}/tpm2-tss/
+%{_libdir}/libtss2-mu.so.0*
+%{_libdir}/libtss2-sys.so.1*
+%{_libdir}/libtss2-esys.so.0*
+%{_libdir}/libtss2-fapi.so.1*
+%{_libdir}/libtss2-rc.so.0*
+%{_libdir}/libtss2-tctildr.so.0*
+%{_libdir}/libtss2-tcti-cmd.so.0*
+%{_libdir}/libtss2-tcti-device.so.0*
+%{_libdir}/libtss2-tcti-mssim.so.0*
+%{_libdir}/libtss2-tcti-pcap.so.0*
+%{_libdir}/libtss2-tcti-swtpm.so.0*
+%{_sysusersdir}/tpm2-tss.conf
+%{_tmpfilesdir}/tpm2-tss-fapi.conf
+%{_udevrulesdir}/%{udevrules_prefix}tpm-udev.rules
+
+%package        devel
+Summary:        Headers and libraries for building apps that use tpm2-tss 
+Requires:       %{name}%{_isa} = %{version}-%{release}
+
+%description    devel
+This package contains headers and libraries required to build applications that
+use tpm2-tss.
+
+%files devel
+%{_includedir}/tss2/
+%{_libdir}/libtss2-mu.so
+%{_libdir}/libtss2-sys.so
+%{_libdir}/libtss2-esys.so
+%{_libdir}/libtss2-fapi.so
+%{_libdir}/libtss2-rc.so
+%{_libdir}/libtss2-tctildr.so
+%{_libdir}/libtss2-tcti-cmd.so
+%{_libdir}/libtss2-tcti-device.so
+%{_libdir}/libtss2-tcti-mssim.so
+%{_libdir}/libtss2-tcti-pcap.so
+%{_libdir}/libtss2-tcti-swtpm.so
+%{_libdir}/pkgconfig/tss2-mu.pc
+%{_libdir}/pkgconfig/tss2-sys.pc
+%{_libdir}/pkgconfig/tss2-esys.pc
+%{_libdir}/pkgconfig/tss2-fapi.pc
+%{_libdir}/pkgconfig/tss2-rc.pc
+%{_libdir}/pkgconfig/tss2-tctildr.pc
+%{_libdir}/pkgconfig/tss2-tcti-cmd.pc
+%{_libdir}/pkgconfig/tss2-tcti-device.pc
+%{_libdir}/pkgconfig/tss2-tcti-mssim.pc
+%{_libdir}/pkgconfig/tss2-tcti-pcap.pc
+%{_libdir}/pkgconfig/tss2-tcti-swtpm.pc
+%{_mandir}/man3/*.3.gz
+%{_mandir}/man5/*.5.gz
+%{_mandir}/man7/tss2*.7.gz
+
+
+%changelog
+@CHANGELOG@

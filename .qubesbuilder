@@ -1,0 +1,8 @@
+host:
+  rpm:
+    build:
+    - tpm2-tss.spec
+source:
+  files:
+  - url: https://github.com/tpm2-software/tpm2-tss/releases/download/@VERSION@/tpm2-tss-@VERSION@.tar.gz
+    sha512: tpm2-tss-@VERSION@.tar.gz.sha512
