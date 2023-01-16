@@ -13,6 +13,7 @@ Patch0:        tpm2-tss-3.0.0-doxygen.patch
 
 %global udevrules_prefix 60-
 
+BuildRequires: acl
 BuildRequires: make
 BuildRequires: autoconf-archive
 BuildRequires: doxygen
